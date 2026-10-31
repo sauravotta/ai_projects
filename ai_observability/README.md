@@ -18,20 +18,40 @@ ask
 Scores on every trace: `tool_success` (boolean), `answer_length_ok` (boolean), `relevance_overlap` (0 to 1, a crude proxy).
 The 8 built-in questions include a failing tool call (`10 / 0`) and a slow lookup, so the dashboard has errors and latency outliers to show.
 
-## Run
-Requires the .NET 7 SDK or newer (if you use a newer SDK, change `TargetFramework` in the `.csproj`).
+## Run locally
+**Prerequisites:** [.NET SDK](https://dotnet.microsoft.com/download) 7 or newer (if you use a newer SDK, change `TargetFramework` in `src/AiObservability/AiObservability.csproj`). A Langfuse account is optional.
 
-1. Create a free project on [Langfuse Cloud](https://cloud.langfuse.com) (Hobby tier) and copy its API keys.
-2. Configure keys, either as environment variables or in a `.env` file in the directory you run from (gitignored, never commit it):
+```bash
+git clone https://github.com/sauravotta/ai_projects.git
+cd ai_projects/ai_observability/src/AiObservability
+```
+
+**Quick start (no keys):** runs with a simulated model and tracing off, to confirm everything builds.
+```bash
+dotnet run
+```
+
+**With Langfuse tracing:**
+1. Create a free project on [Langfuse Cloud](https://cloud.langfuse.com) (Hobby tier), then go to Settings, API Keys, Create new key. Copy the public and secret keys.
+2. Create a `.env` file in `src/AiObservability` (gitignored, never commit it):
    ```bash
-   cd ai_projects/ai_observability/src/AiObservability
-   cp ../../.env.example .env      # then fill in your keys
-   dotnet run                      # or: dotnet run -- 3   (run only the first 3 questions)
+   cp ../../.env.example .env
    ```
+   Fill in `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` and `LANGFUSE_HOST`. **The host must match your project's region:** EU is `https://cloud.langfuse.com`, US is `https://us.cloud.langfuse.com`. A wrong host fails silently, so no traces appear.
+3. Run it:
+   ```bash
+   dotnet run             # all 8 questions
+   dotnet run -- 3        # only the first 3
+   ```
+   The first line should read `tracing: Langfuse ON | llm: simulated ... | session: demo-xxxxxx`, and the run ends with `Done.`
+4. Open your Langfuse project. Traces appear within a few seconds under Tracing, grouped under that session.
+
+Optional: set `OPENROUTER_API_KEY` in `.env` to use a real LLM instead of the simulated model.
+
 | Variable | Purpose |
 |----------|---------|
 | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | Enables tracing. Without them the demo still runs, with tracing off |
-| `LANGFUSE_HOST` | Region/host, default `https://cloud.langfuse.com` (US: `https://us.cloud.langfuse.com`) |
+| `LANGFUSE_HOST` | Region/host, default `https://cloud.langfuse.com` (EU). Use `https://us.cloud.langfuse.com` for US |
 | `OPENROUTER_API_KEY` | Real LLM via OpenRouter. Without it a simulated model is used |
 | `OPENROUTER_MODEL` | Preferred model; free fallbacks are tried on errors |
 

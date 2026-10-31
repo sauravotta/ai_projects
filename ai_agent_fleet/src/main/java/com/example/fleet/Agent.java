@@ -1,7 +1,5 @@
 package com.example.fleet;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 /**
  * One identical worker in the fleet. It pulls tasks from the shared queue, "thinks" (simulated
  * LLM call), and reports back. It beats a heartbeat so the manager can detect a dead agent.
@@ -10,16 +8,16 @@ public class Agent implements Runnable {
 
     private final String name;
     private final FleetManager fleet;
-    private final double crashRate;
+    private final Model model;
 
     private volatile long lastHeartbeat = System.currentTimeMillis();
     private volatile Task current;
     private volatile boolean stopped;
 
-    public Agent(String name, FleetManager fleet, double crashRate) {
+    public Agent(String name, FleetManager fleet, Model model) {
         this.name = name;
         this.fleet = fleet;
-        this.crashRate = crashRate;
+        this.model = model;
     }
 
     @Override
@@ -43,18 +41,17 @@ public class Agent implements Runnable {
         }
     }
 
-    private void work(Task task) throws InterruptedException {
-        ThreadLocalRandom rnd = ThreadLocalRandom.current();
-        Thread.sleep(rnd.nextInt(150, 400));
-        if (rnd.nextDouble() < crashRate) {
-            throw new IllegalStateException(name + " crashed on " + task);
+    private void work(Task task) {
+        try {
+            fleet.reportSuccess(name, task, model.complete(task.prompt()));
+        } catch (IllegalStateException crash) {
+            throw crash;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception softFailure) {
+            // e.g. timeout or rate limit: the agent survives and the task is retried.
+            fleet.reportFailure(name, task, softFailure.getMessage());
         }
-        // Soft failure, e.g. a model timeout: the agent survives and the task is retried.
-        if (rnd.nextDouble() < 0.1) {
-            fleet.reportFailure(name, task);
-            return;
-        }
-        fleet.reportSuccess(name, task, "answer for \"" + task.prompt() + "\"");
     }
 
     private void beat() {

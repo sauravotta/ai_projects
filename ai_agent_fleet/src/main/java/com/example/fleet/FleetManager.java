@@ -2,6 +2,7 @@ package com.example.fleet;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -18,26 +19,28 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class FleetManager {
 
-    static final int MAX_ATTEMPTS = 3;
-    private static final long HEARTBEAT_TIMEOUT_MS = 1500;
+    static final int MAX_ATTEMPTS = 4;
 
     private final int minAgents;
     private final int maxAgents;
-    private final double crashRate;
+    private final Model model;
+    private final long heartbeatTimeoutMs;
     private final LinkedBlockingQueue<Task> queue = new LinkedBlockingQueue<>();
     private final Map<String, Agent> agents = new ConcurrentHashMap<>();
     private final List<String> results = new CopyOnWriteArrayList<>();
     private final List<Task> deadLetters = new CopyOnWriteArrayList<>();
+    private final Set<Integer> resolvedIds = ConcurrentHashMap.newKeySet();
     private final AtomicInteger agentSeq = new AtomicInteger();
     private final AtomicInteger restarts = new AtomicInteger();
     private final AtomicInteger peak = new AtomicInteger();
     private final CountDownLatch resolved;
     private final ScheduledExecutorService supervisor = Executors.newSingleThreadScheduledExecutor();
 
-    public FleetManager(int minAgents, int maxAgents, double crashRate, int totalTasks) {
+    public FleetManager(int minAgents, int maxAgents, Model model, long heartbeatTimeoutMs, int totalTasks) {
         this.minAgents = minAgents;
         this.maxAgents = maxAgents;
-        this.crashRate = crashRate;
+        this.model = model;
+        this.heartbeatTimeoutMs = heartbeatTimeoutMs;
         this.resolved = new CountDownLatch(totalTasks);
     }
 
@@ -68,13 +71,17 @@ public class FleetManager {
     }
 
     void reportSuccess(String agent, Task task, String answer) {
+        if (!resolvedIds.add(task.id())) {
+            return; // already resolved, e.g. a replaced agent finishing a task that was re-queued
+        }
         results.add(answer);
-        log(agent + " completed " + task);
+        String preview = answer.replaceAll("\\s+", " ");
+        log(agent + " completed " + task + ": " + (preview.length() > 70 ? preview.substring(0, 70) + "..." : preview));
         resolved.countDown();
     }
 
-    void reportFailure(String agent, Task task) {
-        log(agent + " failed " + task);
+    void reportFailure(String agent, Task task, String reason) {
+        log(agent + " failed " + task + " (" + reason + ")");
         retryOrDeadLetter(task);
     }
 
@@ -84,7 +91,7 @@ public class FleetManager {
         try {
             long now = System.currentTimeMillis();
             for (Agent agent : List.copyOf(agents.values())) {
-                if (now - agent.lastHeartbeat() > HEARTBEAT_TIMEOUT_MS) {
+                if (now - agent.lastHeartbeat() > heartbeatTimeoutMs) {
                     replace(agent);
                 }
             }
@@ -118,17 +125,22 @@ public class FleetManager {
 
     private void retryOrDeadLetter(Task task) {
         if (task.attempts() + 1 >= MAX_ATTEMPTS) {
+            if (!resolvedIds.add(task.id())) {
+                return;
+            }
             deadLetters.add(task);
             log("xx " + task + " dead-lettered");
             resolved.countDown();
         } else {
-            queue.add(task.retry());
+            // Exponential backoff so retries don't hammer a rate-limited model.
+            long delayMs = 1000L << task.attempts();
+            supervisor.schedule(() -> queue.add(task.retry()), delayMs, TimeUnit.MILLISECONDS);
         }
     }
 
     private void spawn(String reason) {
         String name = "agent-" + agentSeq.incrementAndGet();
-        Agent agent = new Agent(name, this, crashRate);
+        Agent agent = new Agent(name, this, model);
         agents.put(name, agent);
         peak.accumulateAndGet(agents.size(), Math::max);
         Thread.ofPlatform().name(name).daemon().start(agent);

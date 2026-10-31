@@ -8,3 +8,4 @@ A collection of small AI projects. Each lives in its own folder with its own REA
 | [ai_agent_swarm](./ai_agent_swarm) | 4-agent swarm (Coordinator, Researcher, Writer, Critic) using tool-call handoffs |
 | [ai_agent_fleet](./ai_agent_fleet) | Java fleet demo: autoscaling, heartbeats, retries, dead-lettering |
 | [ai_agent_team](./ai_agent_team) | .NET team demo: a lead and teammates coordinating through a shared task list |
+| [ai_observability](./ai_observability) | .NET LLM observability demo: OpenTelemetry traces and scores in a Langfuse dashboard |

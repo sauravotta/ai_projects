@@ -54,4 +54,6 @@ OpenRouter's free tier is limited to about 50 requests per day (each question us
 
 ## Notes
 - Cost appears in Langfuse only for models it has pricing for; free OpenRouter models report 0.
-- Tested with the export pointed at a local stand-in endpoint (protobuf OTLP, auth header, attributes, scores). Verify against your own Langfuse project.
+- Verified end to end against Langfuse Cloud (US region): 8 traces and 47 observations with correct nesting, an ERROR-level tool span, token usage and model on generations, session grouping, and 3 scores per trace.
+- To read the data back via API, use `GET /api/public/v2/observations` (add `fields=core,basic,time,io,model,usage`) and `GET /api/public/v3/scores`. The older `/traces` and `/scores` endpoints are deprecated.
+- Keys from a US-region project must use `LANGFUSE_HOST=https://us.cloud.langfuse.com`; with the wrong region the export fails silently.

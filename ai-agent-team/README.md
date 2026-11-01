@@ -4,8 +4,8 @@ A .NET demo of the **team** pattern: a team lead and several specialist teammate
 through a **shared task list**.
 
 How the patterns differ:
-- [ai_agent_swarm](../ai_agent_swarm): different agents hand one task to each other.
-- [ai_agent_fleet](../ai_agent_fleet): identical agents process many independent tasks.
+- [ai-agent-swarm](../ai-agent-swarm): different agents hand one task to each other.
+- [ai-agent-fleet](../ai-agent-fleet): identical agents process many independent tasks.
 - **Team (this project):** specialists work in parallel on pieces of one goal, coordinated through a shared board.
 
 ## Components (`src/AgentTeam`)
@@ -26,7 +26,7 @@ How the patterns differ:
 ## Run
 Requires the .NET 7 SDK or newer (if you use a newer SDK, change `TargetFramework` in the `.csproj`).
 ```bash
-cd ai_projects/ai_agent_team/src/AgentTeam
+cd ai-projects/ai-agent-team/src/AgentTeam
 dotnet run                                   # simulated model, no key needed
 dotnet run -- "Plan a company hackathon"     # custom goal
 OPENROUTER_API_KEY=your-key dotnet run       # real LLM

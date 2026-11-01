@@ -3,7 +3,7 @@
 A dependency-free Java demo of the **fleet** pattern: many identical agents run in parallel on a shared
 queue of tasks, under a supervisor that scales, monitors, and heals the pool.
 
-Swarm vs fleet: in [ai_agent_swarm](../ai_agent_swarm) a few *different* agents hand one task to each other.
+Swarm vs fleet: in [ai-agent-swarm](../ai-agent-swarm) a few *different* agents hand one task to each other.
 In a fleet, *the same* agent is replicated to process many independent tasks at scale.
 
 ## Components
@@ -30,7 +30,7 @@ In a fleet, *the same* agent is replicated to process many independent tasks at 
 ## Run
 Requires JDK 21+ and Maven.
 ```bash
-cd ai_projects/ai_agent_fleet
+cd ai-projects/ai-agent-fleet
 mvn -q package
 java -jar target/ai-agent-fleet-1.0.0.jar        # optional arg: number of tasks
 OPENROUTER_API_KEY=your-key java -jar target/ai-agent-fleet-1.0.0.jar

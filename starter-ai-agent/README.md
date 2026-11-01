@@ -28,8 +28,8 @@ and the session continues.
 Requires Python 3.9+ and a free OpenRouter API key from https://openrouter.ai/keys.
 
 ```bash
-git clone https://github.com/sauravotta/ai_projects.git
-cd ai_projects/starter_ai_agent
+git clone https://github.com/sauravotta/ai-projects.git
+cd ai-projects/starter-ai-agent
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env    # then put your key in .env (never in .env.example)

@@ -22,8 +22,8 @@ The 8 built-in questions include a failing tool call (`10 / 0`) and a slow looku
 **Prerequisites:** [.NET SDK](https://dotnet.microsoft.com/download) 7 or newer (if you use a newer SDK, change `TargetFramework` in `src/AiObservability/AiObservability.csproj`). A Langfuse account is optional.
 
 ```bash
-git clone https://github.com/sauravotta/ai_projects.git
-cd ai_projects/ai_observability/src/AiObservability
+git clone https://github.com/sauravotta/ai-projects.git
+cd ai-projects/ai-observability/src/AiObservability
 ```
 
 **Quick start (no keys):** runs with a simulated model and tracing off, to confirm everything builds.

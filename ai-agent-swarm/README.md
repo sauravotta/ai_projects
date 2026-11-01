@@ -18,7 +18,7 @@ until the task is done. Uses [OpenRouter](https://openrouter.ai) free models.
 
 ## Run
 ```bash
-cd ai_projects/ai_agent_swarm
+cd ai-projects/ai-agent-swarm
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env    # then put your OpenRouter key in .env

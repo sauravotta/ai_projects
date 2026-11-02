@@ -6,27 +6,32 @@ namespace AgentTeam;
 /// </summary>
 public class TeamLead
 {
-    private readonly SharedTaskList _board = new();
+    private SharedTaskList _board = null!;
     private readonly IModel _model;
-    private readonly List<Teammate> _team;
+    private readonly string? _databasePath;
+    private List<Teammate> _team = new();
 
-    public TeamLead(IModel model)
+    public TeamLead(IModel model, string? databasePath = null)
     {
         _model = model;
-        _team = new List<Teammate>
-        {
-            new Teammate("Ada", "Researcher", _board, model),
-            new Teammate("Alan", "Researcher", _board, model),
-            new Teammate("Linus", "Writer", _board, model),
-            new Teammate("Grace", "Reviewer", _board, model),
-        };
+        _databasePath = databasePath;
     }
 
     public async Task<string> RunAsync(string goal, CancellationToken ct)
     {
+        _board = new SharedTaskList(_databasePath ?? SharedTaskList.GetDatabasePathForGoal(goal));
+        _team = new List<Teammate>
+        {
+            new Teammate("Ada", "Researcher", _board, _model),
+            new Teammate("Alan", "Researcher", _board, _model),
+            new Teammate("Linus", "Writer", _board, _model),
+            new Teammate("Grace", "Reviewer", _board, _model),
+        };
         Log.Say("Lead", $"goal: {goal}");
-        Plan(goal);
-        Log.Say("Lead", $"posted {_board.Snapshot().Count} tasks, team: {string.Join(", ", _team.Select(t => $"{t.Name} ({t.Role})"))}");
+        var resumed = _board.Initialize(goal, Plan(goal));
+        Log.Say("Lead", $"state database: {_board.DatabasePath}");
+        Log.Say("Lead", $"{(resumed ? "resumed" : "posted")} {_board.Snapshot().Count} tasks, " +
+                        $"team: {string.Join(", ", _team.Select(t => $"{t.Name} ({t.Role})"))}");
 
         using var workersCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var workers = _team.Select(t => Task.Run(() => t.RunAsync(workersCts.Token))).ToList();
@@ -56,15 +61,18 @@ public class TeamLead
             $"Combine your team's work into a short final brief for the goal \"{goal}\".\n\n{notes}", ct);
     }
 
-    private void Plan(string goal)
+    private static IReadOnlyCollection<TeamTask> Plan(string goal)
     {
-        _board.Add(new TeamTask { Id = 1, Role = "Researcher", Title = "Research the topic",
-            Prompt = $"List 3 key facts or considerations for: {goal}" });
-        _board.Add(new TeamTask { Id = 2, Role = "Researcher", Title = "Identify risks",
-            Prompt = $"List 2 main risks or pitfalls for: {goal}" });
-        _board.Add(new TeamTask { Id = 3, Role = "Writer", Title = "Draft the brief", DependsOn = new[] { 1, 2 },
-            Prompt = $"Write a short draft brief (under 60 words) for: {goal}" });
-        _board.Add(new TeamTask { Id = 4, Role = "Reviewer", Title = "Review the draft", DependsOn = new[] { 3 },
-            Prompt = "Review the draft: give 2 concrete improvements." });
+        return new[]
+        {
+            new TeamTask { Id = 1, Role = "Researcher", Title = "Research the topic",
+                Prompt = $"List 3 key facts or considerations for: {goal}" },
+            new TeamTask { Id = 2, Role = "Researcher", Title = "Identify risks",
+                Prompt = $"List 2 main risks or pitfalls for: {goal}" },
+            new TeamTask { Id = 3, Role = "Writer", Title = "Draft the brief", DependsOn = new[] { 1, 2 },
+                Prompt = $"Write a short draft brief (under 60 words) for: {goal}" },
+            new TeamTask { Id = 4, Role = "Reviewer", Title = "Review the draft", DependsOn = new[] { 3 },
+                Prompt = "Review the draft: give 2 concrete improvements." },
+        };
     }
 }

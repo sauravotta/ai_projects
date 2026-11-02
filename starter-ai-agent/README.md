@@ -21,6 +21,7 @@ and the session continues.
 | File | Purpose |
 |------|---------|
 | `agent.py` | Agent loop, tools, and OpenRouter client |
+| `test_agent.py` | Unit tests for history persistence (`python -m unittest`) |
 | `requirements.txt` | Python dependencies (`openai`, `python-dotenv`) |
 | `.env.example` | Template for environment variables |
 
@@ -43,11 +44,21 @@ you> What is 1234.5 + 6789?
 you> exit
 ```
 
+## Persistent history (SQLite)
+Conversation history is saved to a local SQLite database (standard-library `sqlite3`) and reloaded
+the next time you start the CLI, so the agent remembers earlier sessions.
+- Each named session has its own history: `python agent.py --session work`. The default session is `default`.
+- `python agent.py --reset` clears the selected session's saved history first.
+- Database path: `--db PATH`, else `AGENT_DB_PATH`, else `agent_state.db` next to `agent.py` (git-ignored).
+- A turn (your message, tool calls/results, and the reply) is written in one transaction after it succeeds; failed turns are not saved.
+- Saved history grows without bound and is sent to the model in full; use `--reset` or a new `--session` for long-running use.
+
 ## Configuration (`.env`)
 | Variable | Description |
 |----------|-------------|
 | `OPENROUTER_API_KEY` | Your OpenRouter API key (required) |
 | `OPENROUTER_MODEL` | Preferred model, tried first (default `nvidia/nemotron-3-ultra-550b-a55b:free`) |
+| `AGENT_DB_PATH` | Optional SQLite file for saved history (default `agent_state.db`) |
 
 ## Adding a tool
 Write a function, add it to `TOOLS`, and add its JSON schema to `TOOL_SCHEMAS` in `agent.py`.

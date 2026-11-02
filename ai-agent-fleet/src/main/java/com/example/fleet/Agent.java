@@ -25,7 +25,7 @@ public class Agent implements Runnable {
         try {
             while (!stopped) {
                 beat();
-                Task task = fleet.nextTask();
+                Task task = fleet.nextTask(name);
                 if (task == null) {
                     continue;
                 }

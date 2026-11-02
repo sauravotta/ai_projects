@@ -1,7 +1,7 @@
 # AI Agent Fleet (Java)
 
-A dependency-free Java demo of the **fleet** pattern: many identical agents run in parallel on a shared
-queue of tasks, under a supervisor that scales, monitors, and heals the pool.
+A Java demo of the **fleet** pattern: identical agents run in parallel on a shared, SQLite-backed
+task queue, under a supervisor that scales, monitors, and heals the pool.
 
 Swarm vs fleet: in [ai-agent-swarm](../ai-agent-swarm) a few *different* agents hand one task to each other.
 In a fleet, *the same* agent is replicated to process many independent tasks at scale.
@@ -12,8 +12,25 @@ In a fleet, *the same* agent is replicated to process many independent tasks at 
 | `Task` | Immutable unit of work, tracks retry attempts |
 | `Agent` | Worker thread: pulls a task, calls its `Model`, reports back, beats a heartbeat |
 | `Model` | Interface for the agent's brain; `SimulatedModel` (offline) and `OpenRouterModel` (real LLM) |
-| `FleetManager` | Shared queue plus supervisor: autoscaling, health checks, retries, dead-letter list |
+| `TaskStore` | SQLite persistence for queued/running tasks, retry timing, results, and dead letters |
+| `FleetManager` | SQLite-backed queue plus supervisor: autoscaling, health checks, retries, and reporting |
 | `Main` | Demo: 40 tasks, fleet of 2 growing to 8 |
+
+## Durable state
+- The default database is `fleet.db` in the current working directory. Set `FLEET_DB_PATH` to use
+  another SQLite file. The database is local and is not uploaded to a service.
+- Tasks, attempt counts, retry availability, final results, and dead-letter state survive process
+  restarts. On startup, work owned by a fleet instance whose heartbeat lease has expired is returned
+  to the queue. The lease is at least 5 seconds; an uncleanly stopped process can take that long to
+  be recognized as abandoned.
+- Claims and state transitions are atomic in SQLite, so workers and multiple fleet instances do not
+  process the same currently-claimed task at once. Results are committed before they are reported.
+- Each demo run gets fresh task IDs, while the public `submit(Task)` operation is idempotent by task
+  ID and rejects an ID reused with a different prompt. If a task is executed again after a crash
+  between the model response and its database commit, its external model call may be repeated;
+  exactly-once side effects cannot be guaranteed for an arbitrary model endpoint.
+- SQLite uses WAL mode, a full synchronous commit setting, and a bounded busy timeout. Keep the
+  database on a local filesystem that supports SQLite locking; avoid network shares.
 
 ## What the demo shows
 - **Autoscaling:** one agent is added per 250 ms tick while the queue holds more than 2 tasks per agent (max 8).
@@ -28,10 +45,11 @@ In a fleet, *the same* agent is replicated to process many independent tasks at 
 - `.env` is gitignored. Never commit your key.
 
 ## Run
-Requires JDK 21+ and Maven.
+Requires JDK 21+ and Maven. Maven packages the SQLite JDBC driver into the runnable JAR.
 ```bash
 cd ai-projects/ai-agent-fleet
 mvn -q package
 java -jar target/ai-agent-fleet-1.0.0.jar        # optional arg: number of tasks
 OPENROUTER_API_KEY=your-key java -jar target/ai-agent-fleet-1.0.0.jar
+FLEET_DB_PATH=./state/demo.db java -jar target/ai-agent-fleet-1.0.0.jar 10
 ```

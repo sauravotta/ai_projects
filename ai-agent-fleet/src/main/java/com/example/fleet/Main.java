@@ -35,16 +35,17 @@ public class Main {
             Model llm = new OpenRouterModel(apiKey, chain);
             // Small fleet (free models are rate-limited); heartbeat timeout covers the worst-case fallback chain.
             long timeout = OpenRouterModel.REQUEST_TIMEOUT.toMillis() * chain.size() + 15_000;
-            fleet = new FleetManager(2, 3, llm, timeout, tasks);
+            fleet = new FleetManager(2, 3, llm, timeout, tasks, databasePath());
             System.out.println("Mode: live OpenRouter model");
         } else {
-            fleet = new FleetManager(2, 8, new SimulatedModel(0.08), 1500, tasks);
+            fleet = new FleetManager(2, 8, new SimulatedModel(0.08), 1500, tasks, databasePath());
             System.out.println("Mode: simulated model (set OPENROUTER_API_KEY for a real LLM)");
         }
         fleet.start();
         for (int i = 1; i <= tasks; i++) {
-            fleet.submit(new Task(i, "In one sentence, explain topic #" + i + " of an intro AI course.", 0));
+            fleet.submitNew("In one sentence, explain topic #" + i + " of an intro AI course.");
         }
+
         boolean done = fleet.awaitCompletion(live ? 5 : 2, TimeUnit.MINUTES);
         fleet.shutdown();
         fleet.printSummary();
@@ -52,6 +53,11 @@ public class Main {
             System.out.println("Timed out before all tasks resolved.");
             System.exit(1);
         }
+    }
+
+    private static Path databasePath() {
+        String path = setting("FLEET_DB_PATH");
+        return path == null || path.isBlank() ? Path.of("fleet.db") : Path.of(path);
     }
 
     /** Reads a setting from the environment, falling back to KEY=value lines in ./.env. */
